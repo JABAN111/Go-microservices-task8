@@ -1,93 +1,67 @@
-# task8
+# Управление нагрузкой и доступом.
+## Цель
+Ограничить нагрузку на сервис с помощью rate и concurrency limiters. Добавить котроль доступа
+к критическим операциям.
 
+В данном задании необходимо познакомиться с шаблоном Адаптер (middleware) в REST API.
 
+Для endpoint-а /api/search, который ходит напрямую в базу данных, нужно добавить
+concurrency limiter, заданный переменной окружения SEARCH_CONCURRENCY. При достижении лимита
+на работу с данным endpoint-ом система должна возвращать HTTP статус 503 (service unavailable).
 
-## Getting started
+Для endpoint-а /api/isearch нужно добавить rate limiter, который регулируется переменной
+окружения SEARCH_RATE. Данный limiter не возвращает 503, а задерживает соединения для регулировки
+их скорости в пределах заданного переменной окружения RPS (requests per second).
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
+Два критических endpoint-а должны быть защищены от доступа непривилегированными пользователями.
+Доступ регулируется через 'POST /api/login' endpoint и middleware для проверки выданных логином
+JWT токенов. "POST /api/login" должен принимать JSON в теле запроса вида
 ```
-cd existing_repo
-git remote add origin https://gitlab-pub.yadro.com/golang/tasks/task8.git
-git branch -M master
-git push -uf origin master
+{
+  "name": "admin",
+  "password": "password"
+}
 ```
+и отдавать токен ввиде строчки. Вам ненужно реализовывать отдельный микросервис авторизации - 
+достаточно принимать из переменных среды имя и пароль "суперпользователя", переменные
+ADMIN_USER и ADMIN_PASSWORD. "/api/login" проверяет пользователя и пароль, и если они не совпадают,
+отдаем HTTP Unauthorized. Если все ОК - выдаем токен на время TOKEN_TTL (переменная среды,
+2 минуты по умолчанию) с subject установленным в "superuser". При запросах на обновление базы
+или ее удаление, необходимо имплементировать middleware, котрое будет выданный токен проверять - 
+HTTP Header вида "Authorization: Token выданный_токен_здесь". Если не удалось проверить токен -
+HTTP Unauthorized.
 
-## Integrate with your tools
+Предлагается сервис проверки и выдачи токенов реализовать в адаптере - это позволит потом плавно
+перейти к разработке отдельного сервиса AAA (Authentication, Authorization, Accounting).
 
-- [ ] [Set up project integrations](https://gitlab-pub.yadro.com/golang/tasks/task8/-/settings/integrations)
+Сервисы должны собираться и запускаться через модифицированный compose файл,
+а также проходить интеграционные тесты - запуск специального тест контейнера.
 
-## Collaborate with your team
+## Критерии приемки
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+1. Микросервисы компилируются в docker image-ы, запускаются через compose файл и проходят тесты.
+2. Можно использовать код из предыдущего задания.
+3. Сервис api конфигурируeтся через cleanenv пакет и должeн уметь запускаться как с config.yaml
+файлом через флаг -config, так и через переменные среды, в этом задании - 
+ADMIN_USER, ADMIN_PASSWORD, TOKEN_TTL, API_ADDRESS, WORDS_ADDRESS, UPDATE_ADDRESS,
+SEARCH_ADDRESS, SEARCH_CONCURRENCY, SEARCH_RATE. Все они уже добавлены в compose.yaml.
+5. Используется golang 1.23+, slog логгер.
 
-## Test and Deploy
+## Материалы для ознакомления
 
-Use the built-in continuous integration in GitLab.
+Rate limiters:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+- [System Design - ограничитель трафика](http://youtube.com/watch?v=w4suQQtnYmY)
+- [Go rate limiter](https://github.com/uber-go/ratelimit)
+- [x/time/rate](https://pkg.go.dev/golang.org/x/time/rate)
 
-***
+Middleware:
 
-# Editing this README
+- [Logging middleware example](https://gowebexamples.com/basic-middleware/)
+- [Разработка REST-серверов на Go. Часть 5: Middleware](https://habr.com/ru/companies/ruvds/articles/566198/)
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+JWT:
 
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- [golang-jwt/jwt](https://pkg.go.dev/github.com/golang-jwt/jwt/v5)
+- [A guide to JWT authentication in Go](https://blog.logrocket.com/jwt-authentication-go/)
+- [JWT-авторизация на сервере](https://ru.hexlet.io/courses/go-web-development/lessons/auth/theory_unit)
