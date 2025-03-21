@@ -2,6 +2,7 @@ package db
 
 import (
 	"embed"
+	"errors"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx"
@@ -14,6 +15,7 @@ var migrationFiles embed.FS
 func (db *DB) Migrate() error {
 	db.log.Debug("running migration")
 	files, err := iofs.New(migrationFiles, "migrations") // get migrations from
+
 	if err != nil {
 		return err
 	}
@@ -29,7 +31,7 @@ func (db *DB) Migrate() error {
 	err = m.Up()
 
 	if err != nil {
-		if err != migrate.ErrNoChange {
+		if !errors.Is(err, migrate.ErrNoChange) {
 			db.log.Error("migration failed", "error", err)
 			return err
 		}

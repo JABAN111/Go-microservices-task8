@@ -2,80 +2,91 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
-	"log/slog"
 	"net/http"
+	"time"
+
+	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 
+	"yadro.com/course/api/adapters/grpc/client"
+	"yadro.com/course/api/adapters/grpc/managers"
 	"yadro.com/course/api/adapters/rest"
-	"yadro.com/course/api/adapters/update"
-	"yadro.com/course/api/config"
+	"yadro.com/course/api/adapters/rest/route"
+	"yadro.com/course/api/internal/logger"
+
+	"yadro.com/course/api/internal/config"
 )
+
+const maxShutdownTime = 8 * time.Second
 
 func main() {
 	var configPath string
 	flag.StringVar(&configPath, "config", "config.yaml", "server configuration file")
 	flag.Parse()
-
 	cfg := config.MustLoad(configPath)
 
-	log := mustMakeLogger(cfg.LogLevel)
+	log := logger.MustMakeLogger(cfg.LogLevel)
+	log.Debug("Debug level is enabled")
+	log.Info("Config parsed", "config", cfg)
 
-	log.Info("starting server")
-	log.Debug("debug messages are enabled")
-
-	updateClient, err := update.NewClient(cfg.UpdateAddress, log)
+	clientManager := managers.NewClientManager(log)
+	wordsClient, err := client.NewWordsClient(cfg.WordsAddress, log)
 	if err != nil {
-		log.Error("cannot init words adapter", "error", err)
+		log.Error("Cannot init WordsClient", "error", err)
+		os.Exit(1)
+	}
+	updateClient, err := client.NewUpdateClient(cfg.UpdateAddress, log)
+	if err != nil {
+		log.Error("Cannot init UpdateClient", "error", err)
 		os.Exit(1)
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("POST /api/db/update", rest.NewUpdateHandler(log, updateClient))
-	mux.Handle("GET /api/db/stats", rest.NewUpdateStatsHandler(log, updateClient))
-	mux.Handle("GET /api/db/status", rest.NewUpdateStatusHandler(log, updateClient))
-	mux.Handle("DELETE /api/db", rest.NewDropHandler(log, updateClient))
+	clientManager.Register("words", wordsClient)
+	log.Info("Words client successfully registered")
+	clientManager.Register("update", updateClient)
+	log.Info("Update client successfully registered")
+	log.Debug("Status of clients", "status", clientManager.PingAll(context.Background()))
 
-	server := http.Server{
-		Addr:        cfg.HTTPConfig.Address,
-		ReadTimeout: cfg.HTTPConfig.Timeout,
-		Handler:     mux,
-	}
+	rootMux := http.NewServeMux()
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	routesCtx := context.Background()
+	route.RegisterCommonRoutes(routesCtx, log, rootMux, clientManager)
+	route.RegisterNormRoutes(routesCtx, log, rootMux, wordsClient)
+	route.RegisterUpdateRoutes(routesCtx, log, rootMux, updateClient)
+
+	restServer := rest.NewServer(log, rootMux, cfg.HttpServer.ServerAddress, cfg.HttpServer.HttpTimeout)
+	log.Info("Server started", "config", cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	go func() {
-		<-ctx.Done()
-		log.Debug("shutting down server")
-		if err := server.Shutdown(context.Background()); err != nil {
-			log.Error("erroneous shutdown", "error", err)
+		if err := restServer.Run(); err != nil {
+			log.Error("Server failed", "error", err)
+			gracefulShutdown(log, restServer, clientManager)
+			os.Exit(1)
 		}
 	}()
 
-	log.Info("Running HTTP server", "address", cfg.HTTPConfig.Address)
-	if err := server.ListenAndServe(); err != nil {
-		if !errors.Is(err, http.ErrServerClosed) {
-			log.Error("server closed unexpectedly", "error", err)
-			return
-		}
-	}
+	<-ctx.Done()
+	gracefulShutdown(log, restServer, clientManager)
 }
 
-func mustMakeLogger(logLevel string) *slog.Logger {
-	var level slog.Level
-	switch logLevel {
-	case "DEBUG":
-		level = slog.LevelDebug
-	case "INFO":
-		level = slog.LevelInfo
-	case "ERROR":
-		level = slog.LevelError
-	default:
-		panic("unknown log level: " + logLevel)
+func gracefulShutdown(log *slog.Logger, restServer *rest.Server, clientManager *managers.ClientManager) {
+	log.Info("Shutting down the server")
+	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), maxShutdownTime)
+	defer cancel()
+
+	log.Debug("Closing all clients...")
+	clientManager.CloseAll(shutdownTimeoutCtx)
+	log.Debug("Client closing are finished")
+
+	log.Debug("Starting shutdown for the http server")
+	if err := restServer.Http.Shutdown(shutdownTimeoutCtx); err != nil {
+		log.Error("Failed to shut down server", "error", err)
 	}
-	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
-	return slog.New(handler)
+
+	log.Info("Server shutdown complete")
 }

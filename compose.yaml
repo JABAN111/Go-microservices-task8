@@ -23,7 +23,7 @@ services:
     image: words:latest
     build:
       context: search-services
-      dockerfile: Dockerfile.words
+      dockerfile: ./Dockerfile.words
     container_name: words
     restart: unless-stopped
     ports:
@@ -37,9 +37,9 @@ services:
     image: update:latest
     build:
       context: search-services
-      dockerfile: Dockerfile.update
+      dockerfile: ./Dockerfile.update
     container_name: update
-    restart: unless-stopped
+#    restart: unless-stopped
     ports:
       - 28082:8080
     volumes:
@@ -48,12 +48,12 @@ services:
       - UPDATE_ADDRESS=:8080
       - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
       - XKCD_URL=https://xkcd.com
-      - XKCD_CONCURRENCY=10
+      - XKCD_CONCURRENCY=1000
       - WORDS_ADDRESS=words:8080
     depends_on:
       postgres:
         condition: service_healthy
-        restart: true
+#        restart: true
       words:
         condition: service_started
 

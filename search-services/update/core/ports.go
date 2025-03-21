@@ -12,10 +12,13 @@ type Updater interface {
 }
 
 type DB interface {
+	AddAllComics(context.Context, <-chan Comics) error
 	Add(context.Context, Comics) error
-	Stats(context.Context) (DBStats, error)
+	DbStats(context.Context) (DBStats, error)
 	Drop(context.Context) error
 	IDs(context.Context) ([]int, error)
+	AddWordStats(ctx context.Context, wordsList []string) error
+	UpdateStats(ctx context.Context, cntUniqueWords int, comicsInTotal int) error
 }
 
 type XKCD interface {
@@ -25,4 +28,5 @@ type XKCD interface {
 
 type Words interface {
 	Norm(ctx context.Context, phrase string) ([]string, error)
+	GetWords(ctx context.Context, phrase string) ([]string, error)
 }

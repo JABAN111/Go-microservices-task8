@@ -1,6 +1,6 @@
 log_level: DEBUG
-words_address: localhost:81
-update_address: localhost:82
-api_server:
-  address: localhost:80
+words_address: localhost:8202
+update_address: localhost:8101
+http_server:
+  address: localhost:28080
   timeout: 5s

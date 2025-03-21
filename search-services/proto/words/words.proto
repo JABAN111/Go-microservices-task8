@@ -18,4 +18,5 @@ message WordsReply {
 service Words {
   rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
   rpc Norm(WordsRequest) returns (WordsReply) {}
+  rpc GetWords(WordsRequest) returns (WordsReply) {}
 }

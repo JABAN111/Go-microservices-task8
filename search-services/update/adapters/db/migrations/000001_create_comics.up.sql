@@ -1,1 +1,1 @@
-CREATE TABLE comics ();
+-- CREATE TABLE comics ();
