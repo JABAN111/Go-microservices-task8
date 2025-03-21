@@ -3,14 +3,16 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
 	"os/signal"
 
+	updatepb "yadro.com/course/proto/update"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	updatepb "yadro.com/course/proto/update"
 	"yadro.com/course/update/adapters/db"
 	updategrpc "yadro.com/course/update/adapters/grpc"
 	"yadro.com/course/update/adapters/words"
@@ -32,9 +34,10 @@ func main() {
 
 	log.Info("starting server")
 	log.Debug("debug messages are enabled")
-
 	// database adapter
-	storage, err := db.New(log, cfg.DBAddress)
+	log.Info("Concurrency setup", "concurrency", cfg.XKCD.Concurrency)
+	storage, err := db.New(log, cfg.DBAddress, cfg.BatchSize, cfg.XKCD.Concurrency)
+
 	if err != nil {
 		log.Error("failed to connect to db", "error", err)
 		os.Exit(1)
@@ -44,7 +47,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// xkcd adapter
 	xkcd, err := xkcd.NewClient(cfg.XKCD.URL, cfg.XKCD.Timeout, log)
 	if err != nil {
 		log.Error("failed create XKCD client", "error", err)
@@ -60,6 +62,8 @@ func main() {
 
 	// service
 	updater, err := core.NewService(log, storage, xkcd, words, cfg.XKCD.Concurrency)
+
+	fmt.Print(updater)
 	if err != nil {
 		log.Error("failed create Update service", "error", err)
 		os.Exit(1)
@@ -71,9 +75,10 @@ func main() {
 		log.Error("failed to listen", "error", err)
 		os.Exit(1)
 	}
+	log.Info("server listening on", "address", cfg.Address)
 
 	s := grpc.NewServer()
-	updatepb.RegisterUpdateServer(s, updategrpc.NewServer(updater))
+	updatepb.RegisterUpdateServer(s, updategrpc.NewServer(updater, log))
 	reflection.Register(s)
 
 	// context for Ctrl-C
@@ -88,7 +93,7 @@ func main() {
 
 	if err := s.Serve(listener); err != nil {
 		log.Error("failed to serve", "erorr", err)
-		os.Exit(1)
+		// os.Exit(1)
 	}
 }
 
