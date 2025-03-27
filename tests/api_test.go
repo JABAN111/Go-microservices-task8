@@ -2,6 +2,7 @@ package words_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sync"
@@ -215,8 +216,9 @@ func TestSearchPhrases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.phrase, func(t *testing.T) {
-			resp, err := client.Get(address + "/api/search?phrase=" + url.QueryEscape(tc.phrase))
-			require.NoError(t, err, "failed to search")
+			addr := address + "/api/search?phrase=" + url.QueryEscape(tc.phrase)
+			resp, err := client.Get(addr)
+			require.NoError(t, err, fmt.Sprintf("failed to search addr: %s", addr))
 			defer resp.Body.Close()
 			require.Equal(t, http.StatusOK, resp.StatusCode, "need OK status")
 			var comics ComicsReply
@@ -225,7 +227,7 @@ func TestSearchPhrases(t *testing.T) {
 			for _, c := range comics.Comics {
 				urls = append(urls, c.URL)
 			}
-			require.Containsf(t, urls, tc.url, "could not find %q", tc.phrase)
+			require.Containsf(t, urls, tc.url, "could not find %q by addr %s", tc.phrase, addr)
 		})
 	}
 }
