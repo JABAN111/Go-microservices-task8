@@ -1,4 +1,4 @@
-container_runtime := $(shell which podman || which docker)
+container_runtime := $(shell which docker || which podman)
 
 $(info using ${container_runtime})
 
@@ -23,7 +23,7 @@ test:
 	@echo "test finished"
 
 lint:
-	make -C search-services lint
+	make -C search-service lint
 
 proto:
-	make -C search-services protobuf
+	make -C search-service protobuf

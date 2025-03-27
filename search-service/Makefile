@@ -1,31 +1,24 @@
-container_runtime := $(shell which docker || which podman)
+lint: protolint golint
 
-$(info using ${container_runtime})
+protobuf:
+	protoc --go_out=. --go_opt=paths=source_relative \
+               --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+               proto/words/words.proto
+	protoc --go_out=. --go_opt=paths=source_relative \
+               --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+               proto/update/update.proto
 
-up:
-	${container_runtime} compose up --build -d
+protolint:
+	protolint .
 
-down:
-	${container_runtime} compose down
+golint:
+	golangci-lint run -E goimports,gocritic -v ./...
 
-clean:
-	${container_runtime} compose down -v
+tools:
+	go install github.com/yoheimuta/protolint/cmd/protolint@latest
+	go install golang.org/x/tools/cmd/goimports@latest
+	go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.61.0
 
-run-tests: 
-	${container_runtime} run --rm --network=host tests:latest
-
-test:
-	make clean
-	make up
-	@echo wait cluster to start && sleep 10
-	make run-tests
-	make clean
-	@echo "test finished"
-
-
-lint:
-	make -C search-services lint
-
-
-proto:
-	make -C search-services protobuf

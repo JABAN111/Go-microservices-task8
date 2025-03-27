@@ -3,14 +3,14 @@ services:
   api:
     image: api:latest
     build:
-      context: search-services
+      context: search-service
       dockerfile: Dockerfile.api
     container_name: api
     restart: unless-stopped
     ports:
       - 28080:8080
     volumes:
-      - ./search-services/api/config.yaml:/config.yaml
+      - ./search-service/pkg/config/api/config.yaml:/config.yaml
     environment:
       - API_ADDRESS=:8080
       - WORDS_ADDRESS=words:8080
@@ -21,41 +21,61 @@ services:
       - update
       - search
 
+  search:
+    image: search:latest
+    build:
+      context: search-service
+      dockerfile: Dockerfile.search
+    container_name: search
+    restart: unless-stopped
+    ports:
+      - 28087:8080
+    volumes:
+      - ./search-service/pkg/config/search/config.yaml:/config.yaml
+    environment:
+     - WORDS_ADDRESS=words:8080
+     - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
+     - CONCURRENCY=600
+    depends_on:
+      postgres:
+        condition: service_healthy
+      words:
+        condition: service_started
+
   words:
     image: words:latest
     build:
-      context: search-services
+      context: search-service
       dockerfile: Dockerfile.words
     container_name: words
     restart: unless-stopped
     ports:
-      - 28081:8080
+      - "28081:8080"
     volumes:
-      - ./search-services/words/config.yaml:/config.yaml
+      - ./search-service/pkg/config/words/config.yaml:/config.yaml
     environment:
       - WORDS_ADDRESS=:8080
 
   update:
     image: update:latest
     build:
-      context: search-services
+      context: search-service
       dockerfile: Dockerfile.update
     container_name: update
-    restart: unless-stopped
+    #    restart: unless-stopped
     ports:
-      - 28082:8080
+      - "28082:8080"
     volumes:
-      - ./search-services/update/config.yaml:/config.yaml
+      - ./search-service/pkg/config/update/config.yaml:/config.yaml
     environment:
       - UPDATE_ADDRESS=:8080
       - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
       - XKCD_URL=https://xkcd.com
-      - XKCD_CONCURRENCY=10
+      - XKCD_CONCURRENCY=100
       - WORDS_ADDRESS=words:8080
     depends_on:
       postgres:
         condition: service_healthy
-        restart: true
       words:
         condition: service_started
 
