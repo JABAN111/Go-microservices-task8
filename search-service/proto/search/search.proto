@@ -26,4 +26,5 @@ service Search {
   rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 
   rpc Search(SearchRequest) returns (RecommendedComics){}
+  rpc ISearch(SearchRequest) returns (RecommendedComics){}
 }
