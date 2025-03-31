@@ -76,7 +76,7 @@ func (x *SearchRequest) GetLimit() int64 {
 
 type Comics struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	ImgUrl        string                 `protobuf:"bytes,5,opt,name=img_url,json=imgUrl,proto3" json:"img_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -112,11 +112,11 @@ func (*Comics) Descriptor() ([]byte, []int) {
 	return file_proto_search_search_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Comics) GetId() string {
+func (x *Comics) GetId() int64 {
 	if x != nil {
 		return x.Id
 	}
-	return ""
+	return 0
 }
 
 func (x *Comics) GetImgUrl() string {
@@ -179,7 +179,7 @@ const file_proto_search_search_proto_rawDesc = "" +
 	"\x06phrase\x18\x01 \x01(\tR\x06phrase\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x03R\x05limit\"C\n" +
 	"\x06Comics\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x17\n" +
 	"\aimg_url\x18\x05 \x01(\tR\x06imgUrlJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05\";\n" +
 	"\x11RecommendedComics\x12&\n" +
 	"\x06comics\x18\x01 \x03(\v2\x0e.update.ComicsR\x06comics2\xbf\x01\n" +

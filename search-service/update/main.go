@@ -37,7 +37,7 @@ func main() {
 	log.Debug("debug messages are enabled")
 
 	log.Info("Concurrency setup", "concurrency", cfg.XKCD.Concurrency)
-	storage, err := db.New(log, cfg.DBAddress, cfg.BatchSize, cfg.XKCD.Concurrency)
+	storage, err := db.New(log, cfg.DBAddress, cfg.BatchSize, cfg.XKCD.Concurrency, cfg.IndexTtl)
 	if err != nil {
 		log.Error("failed to connect to db", "error", err)
 		stop()

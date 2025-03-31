@@ -4,40 +4,30 @@ import (
 	"context"
 )
 
-type SearchReply struct {
-	Comics []Comics
+type GrpcClient interface {
+	Close() error
+	Pinger
 }
-
 type Pinger interface {
 	Ping(context.Context) error
 }
 
-type WordsServicePort interface {
+// Worder :D TODO: how to adapt this?
+type Worder interface {
 	GrpcClient
 	Norm(ctx context.Context, phrase string) ([]string, error)
 }
 
-type UpdateServicePort interface {
+type Updater interface {
 	GrpcClient
 	Status(ctx context.Context) (UpdateStatus, error)
 	Update(ctx context.Context) error
-	Stats(ctx context.Context) (*StatsReply, error)
+	Stats(ctx context.Context) (*Stats, error)
 	Drop(ctx context.Context) error
 }
 
-type SearchServicePort interface {
+type Searcher interface {
 	GrpcClient
-	Search(ctx context.Context, query string, limit int64) (*SearchReply, error)
-}
-
-type GrpcClient interface {
-	Close() error
-	Ping(ctx context.Context) error
-}
-
-type GrpcManager interface {
-	Register(name string, client GrpcClient)
-	GetClient(name string) (GrpcClient, error)
-	CloseAll(ctx context.Context)
-	PingAll(ctx context.Context) map[string]string
+	Search(ctx context.Context, query string, limit int64) ([]Comics, error)
+	ISearch(ctx context.Context, query string, limit int64) ([]Comics, error)
 }

@@ -4,6 +4,7 @@ import "context"
 
 type Searcher interface {
 	Search(phrase string, limit int64) ([]ComicMatch, error)
+	ISearch(ctx context.Context, phrase string, limit int64) ([]ComicMatch, error)
 }
 
 type DB interface {

@@ -29,6 +29,7 @@ func main() {
 	cfg := config.MustLoad(configPath)
 	log := logger.MustMakeLogger(cfg.LogLevel)
 	log.Debug("Debug level is enabled", "cfg", cfg)
+	ctx := context.Background()
 
 	wordClient, err := wordsgrpc.NewClient(cfg.WordsAddress, log)
 
@@ -39,13 +40,14 @@ func main() {
 	if err = wordClient.Ping(context.Background()); err != nil {
 		panic(err)
 	}
-	dbClient, err := db.New(log, cfg.DBAddress, cfg.Workers)
+	dbClient, err := db.New(log, cfg.DBAddress, cfg.Workers, cfg.DBMaxConnections, cfg.DBMaxLifeTime)
+
 	if err != nil {
 		log.Error("Fail to init connection to database", "db address", cfg.DBAddress)
 		panic(err)
 	}
 
-	service := core.NewService(log, dbClient, wordClient, cfg.Workers)
+	service := core.NewService(ctx, log, dbClient, cfg.IndexTtl, wordClient, cfg.Workers)
 
 	// grpc server
 	listener, err := net.Listen("tcp", cfg.Address)

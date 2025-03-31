@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -17,21 +18,25 @@ type DB struct {
 	conn       *sqlx.DB
 	batchSize  int
 	numWorkers int
+	indexTTL   time.Duration
 }
 
-func New(log *slog.Logger, address string, batchSize, numWorkers int) (*DB, error) {
+func New(log *slog.Logger, address string, batchSize, numWorkers int, indexTTL time.Duration) (*DB, error) {
 	db, err := sqlx.Connect("pgx", address)
 	if err != nil {
 		log.Error("connection problem", "address", address, "error", err)
 		return nil, err
 	}
-	log.Debug("connected to db", "address", address)
-	return &DB{
+	database := &DB{
 		log:        log,
 		conn:       db,
 		batchSize:  batchSize,
 		numWorkers: numWorkers,
-	}, nil
+		indexTTL:   indexTTL,
+	}
+
+	log.Debug("connected to db", "address", address)
+	return database, nil
 }
 
 func (db *DB) Ping() error {
@@ -50,7 +55,7 @@ func (db *DB) Add(ctx context.Context, comics core.Comics) error {
 }
 
 func (db *DB) AddAllComics(ctx context.Context, comicsChan <-chan core.Comics) error {
-	var comics []map[string]interface{}
+	var comics []map[string]any
 	var mu sync.Mutex
 	sem := make(chan struct{}, db.numWorkers)
 	var wg sync.WaitGroup

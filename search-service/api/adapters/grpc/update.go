@@ -69,12 +69,12 @@ func (c *UpdateClient) Update(ctx context.Context) error {
 	return nil
 }
 
-func (c *UpdateClient) Stats(ctx context.Context) (*core.StatsReply, error) {
+func (c *UpdateClient) Stats(ctx context.Context) (*core.Stats, error) {
 	stats, err := c.client.Stats(ctx, &emptypb.Empty{})
 	if err != nil {
-		return &core.StatsReply{}, err
+		return &core.Stats{}, err
 	}
-	return &core.StatsReply{
+	return &core.Stats{
 		WordsTotal:    stats.WordsTotal,
 		WordsUnique:   stats.WordsUnique,
 		ComicsTotal:   stats.ComicsTotal,
