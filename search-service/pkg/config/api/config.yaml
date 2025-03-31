@@ -3,4 +3,4 @@ words_address: localhost:8202
 update_address: localhost:8101
 http_server:
   address: localhost:28080
-  timeout: 5s
+  timeout: 30s

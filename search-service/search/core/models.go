@@ -1,7 +1,7 @@
 package core
 
 type Comics struct {
-	ID     string
+	ID     int
 	URL    string
 	ImgUrl string
 	Words  []string

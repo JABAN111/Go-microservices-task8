@@ -45,22 +45,37 @@ func (c *SearchClient) Ping(ctx context.Context) error {
 	return err
 }
 
-func (c *SearchClient) Search(ctx context.Context, query string, limit int64) (*core.SearchReply, error) {
+func (c *SearchClient) Search(ctx context.Context, query string, limit int64) ([]core.Comics, error) {
 	recs, err := c.client.Search(ctx, &searchpb.SearchRequest{
 		Phrase: query,
 		Limit:  limit,
 	})
 	if err != nil {
-		return &core.SearchReply{}, err
+		return nil, err
 	}
 
-	resultComics := make([]core.Comics, len(recs.Comics))
-	for i, rec := range recs.Comics {
-		resultComics[i] = core.Comics{ImgUrl: rec.ImgUrl, ID: rec.Id}
+	return c.convertComics(recs.Comics), nil
+}
+
+func (c *SearchClient) ISearch(ctx context.Context, query string, limit int64) ([]core.Comics, error) {
+	recs, err := c.client.ISearch(ctx, &searchpb.SearchRequest{
+		Phrase: query,
+		Limit:  limit,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return &core.SearchReply{
-		Comics: resultComics,
-	}, nil
+	return c.convertComics(recs.Comics), nil
+}
 
+func (c *SearchClient) convertComics(recs []*searchpb.Comics) []core.Comics {
+	resultComics := make([]core.Comics, len(recs))
+	for i, rec := range recs {
+		resultComics[i] = core.Comics{
+			ImgUrl: rec.ImgUrl,
+			ID:     int(rec.Id),
+		}
+	}
+	return resultComics
 }

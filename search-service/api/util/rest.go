@@ -1,4 +1,4 @@
-package rest_utils
+package util
 
 import (
 	"context"

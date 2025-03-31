@@ -16,6 +16,7 @@ services:
       - WORDS_ADDRESS=words:8080
       - UPDATE_ADDRESS=update:8080
       - SEARCH_ADDRESS=search:8080
+      - HTTP_SERVER_TIMEOUT=30s
     depends_on:
       - words
       - update
@@ -36,6 +37,8 @@ services:
      - WORDS_ADDRESS=words:8080
      - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
      - CONCURRENCY=600
+     - LOG_LEVEL=DEBUG
+     - INDEX_TTL=20s
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,7 +65,6 @@ services:
       context: search-service
       dockerfile: Dockerfile.update
     container_name: update
-    #    restart: unless-stopped
     ports:
       - "28082:8080"
     volumes:
@@ -73,6 +75,7 @@ services:
       - XKCD_URL=https://xkcd.com
       - XKCD_CONCURRENCY=100
       - WORDS_ADDRESS=words:8080
+      - INDEX_TTL=20s
     depends_on:
       postgres:
         condition: service_healthy

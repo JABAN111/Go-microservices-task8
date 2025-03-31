@@ -4,3 +4,4 @@ search_address: ":8080"
 log_level: "DEBUG"
 db_address: "postgres://postgres:password@localhost:5432/postgres"
 concurrency: 500
+index_ttl: 20s

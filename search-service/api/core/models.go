@@ -8,13 +8,13 @@ const (
 	StatusUpdateRunning UpdateStatus = "running"
 )
 
-type StatsReply struct {
+type Stats struct {
 	WordsTotal    int64
 	WordsUnique   int64
 	ComicsTotal   int64
 	ComicsFetched int64
 }
 type Comics struct {
-	ID     string
+	ID     int
 	ImgUrl string
 }

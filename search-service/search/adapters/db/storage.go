@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/lib/pq"
-	"yadro.com/course/pkg/util"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -20,18 +20,39 @@ type DB struct {
 	numWorkers int
 }
 
-func New(log *slog.Logger, address string, numWorkers int) (*DB, error) {
+func New(log *slog.Logger, address string, numWorkers int, maxOpenConn int, connLifeTime time.Duration) (*DB, error) {
 	db, err := sqlx.Connect("pgx", address)
 	if err != nil {
 		log.Error("connection problem", "address", address, "error", err)
 		return nil, err
 	}
+
+	db.SetMaxOpenConns(maxOpenConn)
+	db.SetMaxIdleConns(maxOpenConn)
+	db.SetConnMaxLifetime(connLifeTime)
+
 	log.Debug("connected to db", "address", address)
 	return &DB{
 		log:        log,
 		conn:       db,
 		numWorkers: numWorkers,
 	}, nil
+}
+
+type comicsResponse struct {
+	Id     int            `db:"id"`
+	Url    string         `db:"url"`
+	ImgUrl string         `db:"img_url"`
+	Words  pq.StringArray `db:"words"`
+}
+
+func (cr *comicsResponse) toComics() core.Comics {
+	return core.Comics{
+		ID:     cr.Id,
+		URL:    cr.Url,
+		ImgUrl: cr.ImgUrl,
+		Words:  cr.Words,
+	}
 }
 
 func (db *DB) Ping() error {
@@ -41,25 +62,19 @@ func (db *DB) Ping() error {
 }
 
 func (db *DB) GetAll(ctx context.Context) ([]core.Comics, error) {
-	result := make([]core.Comics, 0)
+	var comicsResponse []comicsResponse
 
-	rows, err := db.conn.DB.QueryContext(ctx, "SELECT id, img_url, words FROM comics")
+	err := db.conn.SelectContext(ctx, &comicsResponse, "SELECT id, img_url, words FROM comics")
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	defer util.SafeClose(rows)
-
-	for rows.Next() {
-		var comic core.Comics
-		err := rows.Scan(&comic.ID, &comic.ImgUrl, pq.Array(&comic.Words))
-		if err != nil {
-			db.log.Warn("Error while scanning rows", "error", err)
-		}
-
-		result = append(result, comic)
+	result := make([]core.Comics, len(comicsResponse))
+	for i, resp := range comicsResponse {
+		result[i] = resp.toComics()
 	}
+
 	return result, nil
 }
