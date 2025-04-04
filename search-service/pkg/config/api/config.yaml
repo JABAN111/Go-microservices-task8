@@ -1,0 +1,9 @@
+log_level: DEBUG
+words_address: localhost:8202
+update_address: localhost:8101
+token_ttl: 24h
+search_concurrency: 1
+search_rate: 1
+http_server:
+  address: localhost:28080
+  timeout: 30s
