@@ -1,0 +1,1 @@
+ALTER TABLE comics ADD COLUMN img_url TEXT
