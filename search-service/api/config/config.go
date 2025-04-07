@@ -13,12 +13,14 @@ type HttpServerConfig struct {
 }
 
 type Config struct {
-	HttpServer    HttpServerConfig `yaml:"http_server"`
-	WordsAddress  string           `yaml:"words_address" env:"WORDS_ADDRESS"`
-	UpdateAddress string           `json:"update_address" env:"UPDATE_ADDRESS"`
-	SearchAddress string           `json:"search_address" env:"SEARCH_ADDRESS"`
-	LogLevel      string           `yaml:"log_level" env:"LOG_LEVEL"`
-	TokenTTL      time.Duration    `yaml:"token_ttl" env:"TOKEN_TTL" env-default:"24h"`
+	HttpServer         HttpServerConfig `yaml:"http_server"`
+	WordsAddress       string           `yaml:"words_address" env:"WORDS_ADDRESS"`
+	UpdateAddress      string           `json:"update_address" env:"UPDATE_ADDRESS"`
+	SearchAddress      string           `json:"search_address" env:"SEARCH_ADDRESS"`
+	ConcurrencyLimiter int              `json:"concurrency_limiter" env:"SEARCH_CONCURRENCY" env-default:"10"`
+	RateLimiter        int              `json:"rate_limiter" env:"SEARCH_RATE" env-default:"100"`
+	LogLevel           string           `yaml:"log_level" env:"LOG_LEVEL"`
+	TokenTTL           time.Duration    `yaml:"token_ttl" env:"TOKEN_TTL" env-default:"2m"`
 }
 
 func defaultConfig() Config {
@@ -28,7 +30,7 @@ func defaultConfig() Config {
 			HttpTimeout:   time.Hour / 2,
 		},
 		WordsAddress:  "localhost:28081",
-		LogLevel:      "info",
+		LogLevel:      "DEBUG",
 		UpdateAddress: "localhost:28082",
 		SearchAddress: "localhost:28087",
 	}

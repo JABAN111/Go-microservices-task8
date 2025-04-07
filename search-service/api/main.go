@@ -12,8 +12,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"yadro.com/course/api/adapters/aaa"
 	grpc "yadro.com/course/api/adapters/grpc"
 	"yadro.com/course/api/adapters/rest"
+	"yadro.com/course/api/adapters/rest/middleware"
 	"yadro.com/course/api/config"
 	"yadro.com/course/api/core"
 	"yadro.com/course/api/logger"
@@ -57,19 +59,45 @@ func main() {
 	clients := map[string]core.GrpcClient{words: wordsClient, update: updateClient, search: searchClient}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", rest.NewNotFoundHandler())
+
+	if err != nil {
+		log.Error("Failed to init auth provider")
+	}
+
+	ctx := context.Background()
+	authProvider, err := aaa.New(cfg.TokenTTL, log)
+	if err != nil {
+		log.Error("Failed to init auth provider", "config", cfg)
+		os.Exit(1)
+	}
+	// -- login
+	mux.HandleFunc("POST /api/login", rest.Chain(rest.NewLoginHandler(log, authProvider), middleware.Loger(log)))
 
 	// -- common
 	mux.HandleFunc("GET /api/ping", rest.NewPingAllHandler(log, clients))
 
 	// -- search
-	mux.HandleFunc("GET /api/search", rest.NewSearchHandler(log, searchClient))
-	mux.HandleFunc("GET /api/isearch", rest.NewISearchHandler(log, searchClient))
+	mux.HandleFunc("GET /api/search", rest.Chain(
+		rest.NewSearchHandler(log, searchClient),
+		middleware.Concurrency(cfg.ConcurrencyLimiter),
+	))
+	mux.HandleFunc("GET /api/isearch", rest.Chain(
+		rest.NewISearchHandler(log, searchClient),
+		middleware.Rate(rest.NewRateLimiter(ctx, cfg.RateLimiter))))
 
 	// -- update
 	mux.HandleFunc("GET /api/db/stats", rest.NewStatsHandler(log, updateClient))
 	mux.HandleFunc("GET /api/db/status", rest.NewStatusHandler(log, updateClient))
-	mux.HandleFunc("POST /api/db/update", rest.NewUpdateHandler(log, updateClient))
-	mux.HandleFunc("DELETE /api/db", rest.NewDropHandler(log, updateClient))
+	mux.HandleFunc("POST /api/db/update", rest.Chain(rest.NewUpdateHandler(log, updateClient),
+		middleware.Loger(log),
+		middleware.Auth(authProvider),
+	))
+
+	mux.HandleFunc("DELETE /api/db", rest.Chain(
+		rest.NewDropHandler(log, updateClient),
+		middleware.Loger(log),
+		middleware.Auth(authProvider)))
 
 	// -- words
 	mux.HandleFunc("GET /api/words/ping", rest.NewPingHandler(log, wordsClient))

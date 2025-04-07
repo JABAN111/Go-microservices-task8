@@ -1,4 +1,4 @@
-container_runtime := $(shell which podman || which docker)
+container_runtime := $(shell which docker || which podman)
 
 $(info using ${container_runtime})
 
@@ -17,13 +17,13 @@ run-tests:
 test:
 	make clean
 	make up
-	@echo wait cluster to start && sleep 10
+	@echo wait cluster to start && sleep 2
 	make run-tests
 	make clean
 	@echo "test finished"
 
 lint:
-	make -C search-services lint
+	make -C search-service lint
 
 proto:
-	make -C search-services protobuf
+	make -C search-service protobuf
