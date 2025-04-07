@@ -20,6 +20,8 @@ services:
       - SEARCH_ADDRESS=search:8080
       - SEARCH_CONCURRENCY=10
       - SEARCH_RATE=100
+      - SECRET_KEY=AAAAC3NzaC1lZDI1NTE5AAAAIAeSDKDSeHdYFyM8x0J4j6pzEW9Rld9HuU8cWnlT7ULD
+      - SALT=AAAAC3NzaC1lZDI1NTE5AAAAIIbdu98NKC57Hk
       - HTTP_SERVER_TIMEOUT=30s
     depends_on:
       - words
@@ -77,7 +79,7 @@ services:
       - UPDATE_ADDRESS=:8080
       - DB_ADDRESS=postgres://postgres:password@postgres:5432/postgres
       - XKCD_URL=https://xkcd.com
-      - XKCD_CONCURRENCY=100
+      - XKCD_CONCURRENCY=20
       - WORDS_ADDRESS=words:8080
       - INDEX_TTL=20s
     depends_on:

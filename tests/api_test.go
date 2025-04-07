@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -62,14 +63,14 @@ func login(t *testing.T) string {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	token, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	return string(token)
+	return strings.TrimSpace(string(token))
 }
 
 func prepare(t *testing.T) {
 	req, err := http.NewRequest(http.MethodDelete, address+"/api/db", nil)
 	require.NoError(t, err, "cannot make request")
 	token := login(t)
-	req.Header.Add("Authorization", "Token "+token)
+	req.Header.Add("Authorization", "bearer "+strings.TrimSpace(token)) //bearer?
 	resp, err := client.Do(req)
 	require.NoError(t, err, "could not send clean up command")
 	defer resp.Body.Close()
@@ -88,7 +89,7 @@ func update(t *testing.T) int {
 	req, err := http.NewRequest(http.MethodPost, address+"/api/db/update", nil)
 	require.NoError(t, err, "cannot make request")
 	token := login(t)
-	req.Header.Add("Authorization", "Token "+token)
+	req.Header.Add("Authorization", "bearer "+strings.TrimSpace(token))
 	resp, err := client.Do(req)
 	require.NoError(t, err, "could not send update command")
 	defer resp.Body.Close()
@@ -134,7 +135,7 @@ func TestUpdate(t *testing.T) {
 		wg.Done()
 	}()
 	go func() {
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 		res3 = status(t)
 		wg.Done()
 	}()
@@ -361,10 +362,11 @@ func TestSearchRateLong(t *testing.T) {
 	const rate = 100
 	const numReq = 1000
 	update(t)
-	time.Sleep(30 * time.Second)
+	time.Sleep(1 * time.Second)
 	var wg sync.WaitGroup
 	wg.Add(numReq)
 	start := time.Now()
+
 	for range numReq {
 		go func() {
 			defer wg.Done()
@@ -374,6 +376,7 @@ func TestSearchRateLong(t *testing.T) {
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 		}()
 	}
+
 	wg.Wait()
 	duration := time.Since(start)
 	actualRate := numReq / duration.Seconds()

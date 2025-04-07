@@ -31,3 +31,15 @@ type Searcher interface {
 	Search(ctx context.Context, query string, limit int64) ([]Comics, error)
 	ISearch(ctx context.Context, query string, limit int64) ([]Comics, error)
 }
+
+type Authenticator interface {
+	Login(user, password string) (string, error)
+}
+
+type TokenVerifier interface {
+	Verify(token string) error
+}
+
+type RateLimiter interface {
+	Wait(ctx context.Context) error
+}

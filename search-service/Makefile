@@ -12,7 +12,7 @@ protobuf:
                proto/search/search.proto
 
 protolint:
-	protolint .
+	protolint proto/*
 
 golint:
 	golangci-lint run -E goimports,gocritic -v ./...
